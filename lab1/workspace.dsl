@@ -21,7 +21,7 @@ workspace {
             }
 
             userService = container "Сервис пользователей" {
-                description "Управляет данными пользователей"
+                description "Управляет данными клиентов и специалистов"
                 technology "Python, FastAPI"
                 tags "user-management"
             }
@@ -51,7 +51,7 @@ workspace {
             }
 
             userDatabase = container "БД пользователей" {
-                description "Хранит данные пользователей"
+                description "Хранит данные клиентов (таблица users) и специалистов (таблица specialists)"
                 technology "PostgreSQL"
                 tags "storage"
             }
@@ -78,7 +78,7 @@ workspace {
         serviceProvisionSystem.apiGateway -> serviceProvisionSystem.orderService "HTTP/JSON"
         serviceProvisionSystem.apiGateway -> serviceProvisionSystem.paymentService "HTTP/JSON"
 
-        serviceProvisionSystem.userService -> serviceProvisionSystem.userDatabase "CRUD операции" "SQL"
+        serviceProvisionSystem.userService -> serviceProvisionSystem.userDatabase "CRUD операции с пользователями (таблицы users и specialists)" "SQL"
         serviceProvisionSystem.serviceService -> serviceProvisionSystem.serviceDatabase "CRUD операции" "SQL"
         serviceProvisionSystem.orderService -> serviceProvisionSystem.orderDatabase "CRUD операции" "SQL"
 
@@ -105,7 +105,7 @@ workspace {
             description "Контейнерная диаграмма системы предоставления услуг"
         }
 
-        dynamic serviceProvisionSystem "CreateUser" "Создание нового пользователя" {
+        dynamic serviceProvisionSystem "CreateUser" "Создание нового клиента" {
             autoLayout lr
             client -> serviceProvisionSystem.apiGateway "POST /api/users"
             serviceProvisionSystem.apiGateway -> serviceProvisionSystem.userService "POST /users"
@@ -114,11 +114,34 @@ workspace {
             serviceProvisionSystem.notificationService -> notificationSystem "Отправка уведомления"
         }
 
-        dynamic serviceProvisionSystem "FindUserByLogin" "Поиск пользователя по логину" {
+        dynamic serviceProvisionSystem "CreateSpecialist" "Создание нового специалиста" {
+            autoLayout lr
+            specialist -> serviceProvisionSystem.apiGateway "POST /api/specialists"
+            serviceProvisionSystem.apiGateway -> serviceProvisionSystem.userService "POST /specialists"
+            serviceProvisionSystem.userService -> serviceProvisionSystem.userDatabase "INSERT INTO specialists"
+            serviceProvisionSystem.userService -> serviceProvisionSystem.notificationService "Запрос на отправку уведомления о регистрации"
+            serviceProvisionSystem.notificationService -> notificationSystem "Отправка уведомления"
+        }
+
+        dynamic serviceProvisionSystem "FindUserByLogin" "Поиск клиента по логину" {
             autoLayout lr
             admin -> serviceProvisionSystem.apiGateway "GET /api/users?login={login}"
-            serviceProvisionSystem.apiGateway -> serviceProvisionSystem.userService "GET /users/by-login/{login}"
+            serviceProvisionSystem.apiGateway -> serviceProvisionSystem.userService "GET /users/login/{login}"
             serviceProvisionSystem.userService -> serviceProvisionSystem.userDatabase "SELECT FROM users WHERE login = ?"
+        }
+
+        dynamic serviceProvisionSystem "FindSpecialistByNameMask" "Поиск специалиста по маске имени и фамилии" {
+            autoLayout lr
+            client -> serviceProvisionSystem.apiGateway "GET /api/specialists?nameMask={mask}"
+            serviceProvisionSystem.apiGateway -> serviceProvisionSystem.userService "GET /specialists/name-mask/{mask}"
+            serviceProvisionSystem.userService -> serviceProvisionSystem.userDatabase "SELECT FROM specialists WHERE name LIKE ? OR surname LIKE ?"
+        }
+
+        dynamic serviceProvisionSystem "FindSpecialistByNameMask" "Поиск специалистов по id" {
+            autoLayout lr
+            client -> serviceProvisionSystem.apiGateway "GET /api/specialists?ids={ids}"
+            serviceProvisionSystem.apiGateway -> serviceProvisionSystem.userService "GET /specialists?ids={ids}"
+            serviceProvisionSystem.userService -> serviceProvisionSystem.userDatabase "SELECT FROM specialists WHERE ids in (:ids)"
         }
 
         dynamic serviceProvisionSystem "GetServicesList" "Получение списка услуг" {
@@ -126,6 +149,14 @@ workspace {
             client -> serviceProvisionSystem.apiGateway "GET /api/services"
             serviceProvisionSystem.apiGateway -> serviceProvisionSystem.serviceService "GET /services"
             serviceProvisionSystem.serviceService -> serviceProvisionSystem.serviceDatabase "SELECT FROM services"
+        }
+
+        dynamic serviceProvisionSystem "CreateService" "Создание новой услуги" {
+            autoLayout lr
+            specialist -> serviceProvisionSystem.apiGateway "POST /api/services"
+            serviceProvisionSystem.apiGateway -> serviceProvisionSystem.serviceService "POST /services"
+            serviceProvisionSystem.serviceService -> serviceProvisionSystem.userDatabase "SELECT FROM specialists WHERE id = ?"
+            serviceProvisionSystem.serviceService -> serviceProvisionSystem.serviceDatabase "INSERT INTO services"
         }
 
         dynamic serviceProvisionSystem "CreateOrder" "Оформление заказа на услугу" {
@@ -136,18 +167,27 @@ workspace {
             serviceProvisionSystem.userService -> serviceProvisionSystem.userDatabase "SELECT FROM users WHERE id = ?"
             serviceProvisionSystem.orderService -> serviceProvisionSystem.serviceService "GET /services/{id}"
             serviceProvisionSystem.serviceService -> serviceProvisionSystem.serviceDatabase "SELECT FROM services WHERE id = ?"
+            serviceProvisionSystem.orderService -> serviceProvisionSystem.userService "GET /specialists/{specialist_id}"
+            serviceProvisionSystem.userService -> serviceProvisionSystem.userDatabase "SELECT FROM specialists WHERE id = ?"
             serviceProvisionSystem.orderService -> serviceProvisionSystem.orderDatabase "INSERT INTO orders"
-            serviceProvisionSystem.orderService -> serviceProvisionSystem.notificationService "Запрос на отправку уведомления исполнителю"
+            serviceProvisionSystem.orderService -> serviceProvisionSystem.notificationService "Запрос на отправку уведомления специалисту"
             serviceProvisionSystem.notificationService -> notificationSystem "Отправка уведомления"
             serviceProvisionSystem.orderService -> serviceProvisionSystem.paymentService "Инициация платежа"
             serviceProvisionSystem.paymentService -> paymentSystem "Обработка платежа"
         }
 
-        dynamic serviceProvisionSystem "GetUserOrders" "Получение заказов пользователя" {
+        dynamic serviceProvisionSystem "GetUserOrders" "Получение заказов клиента" {
             autoLayout lr
             client -> serviceProvisionSystem.apiGateway "GET /api/users/{id}/orders"
             serviceProvisionSystem.apiGateway -> serviceProvisionSystem.orderService "GET /orders/by-user/{id}"
             serviceProvisionSystem.orderService -> serviceProvisionSystem.orderDatabase "SELECT FROM orders WHERE user_id = ?"
+        }
+
+        dynamic serviceProvisionSystem "GetSpecialistOrders" "Получение заказов специалиста" {
+            autoLayout lr
+            specialist -> serviceProvisionSystem.apiGateway "GET /api/specialists/{id}/orders"
+            serviceProvisionSystem.apiGateway -> serviceProvisionSystem.orderService "GET /orders/by-specialist/{id}"
+            serviceProvisionSystem.orderService -> serviceProvisionSystem.orderDatabase "SELECT FROM orders WHERE specialist_id = ?"
         }
     }
 }
