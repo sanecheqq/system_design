@@ -1,0 +1,160 @@
+openapi: 3.0.0
+info:
+  title: Service API
+  description: API для управления услугами
+  version: 1.0.0
+servers:
+  - url: http://localhost:8001
+    description: Development server
+paths:
+  /services/:
+    post:
+      summary: Создание новой услуги
+      operationId: createService
+      tags:
+        - services
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ServiceCreate'
+      responses:
+        '200':
+          description: Услуга успешно создана
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Service'
+        '401':
+          description: Ошибка аутентификации
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  detail:
+                    type: string
+                    example: Invalid authentication credentials
+    
+    get:
+      summary: Получение списка всех услуг
+      operationId: getServices
+      tags:
+        - services
+      responses:
+        '200':
+          description: Список всех услуг
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Service'
+  
+  /services/{service_id}:
+    get:
+      summary: Получение информации об услуге по ID
+      operationId: getService
+      tags:
+        - services
+      parameters:
+        - name: service_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: ID услуги
+      responses:
+        '200':
+          description: Информация об услуге
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Service'
+        '404':
+          description: Услуга не найдена
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  detail:
+                    type: string
+                    example: Service not found
+  
+  /services/specialist/{specialist_username}:
+    get:
+      summary: Получение всех услуг конкретного специалиста
+      operationId: getSpecialistServices
+      tags:
+        - services
+      parameters:
+        - name: specialist_username
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Логин специалиста
+      responses:
+        '200':
+          description: Список услуг специалиста
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Service'
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  
+  schemas:
+    ServiceBase:
+      type: object
+      properties:
+        title:
+          type: string
+          description: Название услуги
+        description:
+          type: string
+          description: Описание услуги
+        price:
+          type: number
+          format: float
+          description: Стоимость услуги
+        specialist_username:
+          type: string
+          description: Логин специалиста, предоставляющего услугу
+      required:
+        - title
+        - description
+        - price
+        - specialist_username
+    
+    ServiceCreate:
+      $ref: '#/components/schemas/ServiceBase'
+    
+    Service:
+      allOf:
+        - $ref: '#/components/schemas/ServiceBase'
+        - type: object
+          properties:
+            id:
+              type: string
+              format: uuid
+              description: Уникальный идентификатор услуги
+            created_at:
+              type: string
+              format: date-time
+              description: Дата и время создания услуги
+          required:
+            - id
+            - created_at

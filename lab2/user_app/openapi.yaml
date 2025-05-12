@@ -1,0 +1,239 @@
+openapi: 3.0.0
+info:
+  title: User API
+  description: API для управления пользователями (клиентами и специалистами)
+  version: 1.0.0
+servers:
+  - url: http://localhost:8000
+    description: Development server
+paths:
+  /token:
+    post:
+      summary: Получение JWT-токена для аутентификации
+      operationId: loginForAccessToken
+      tags:
+        - auth
+      requestBody:
+        required: true
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              type: object
+              properties:
+                username:
+                  type: string
+                  description: Имя пользователя
+                password:
+                  type: string
+                  description: Пароль пользователя
+              required:
+                - username
+                - password
+      responses:
+        '200':
+          description: Успешная аутентификация
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Token'
+        '401':
+          description: Неверные учетные данные
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  detail:
+                    type: string
+                    example: Incorrect username or password
+  
+  /users/:
+    post:
+      summary: Создание нового пользователя
+      operationId: createUser
+      tags:
+        - users
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UserCreate'
+      responses:
+        '200':
+          description: Пользователь успешно создан
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+        '400':
+          description: Ошибка при создании пользователя
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  detail:
+                    type: string
+                    example: Username already registered
+  
+  /users/me:
+    get:
+      summary: Получение информации о текущем пользователе
+      operationId: readUserMe
+      tags:
+        - users
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Информация о текущем пользователе
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+        '401':
+          description: Ошибка аутентификации
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  detail:
+                    type: string
+                    example: Could not validate credentials
+  
+  /users/{username}:
+    get:
+      summary: Получение информации о пользователе по логину
+      operationId: readUser
+      tags:
+        - users
+      parameters:
+        - name: username
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Логин пользователя
+      responses:
+        '200':
+          description: Информация о пользователе
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+        '404':
+          description: Пользователь не найден
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  detail:
+                    type: string
+                    example: User not found
+  
+  /users/search/:
+    get:
+      summary: Поиск пользователей по маске имени и фамилии
+      operationId: searchUsersByName
+      tags:
+        - users
+      parameters:
+        - name: name_mask
+          in: query
+          required: true
+          schema:
+            type: string
+          description: Маска для поиска по имени и фамилии
+      responses:
+        '200':
+          description: Список найденных пользователей
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/User'
+  
+  /specialists/:
+    get:
+      summary: Получение списка всех специалистов
+      operationId: getAllSpecialists
+      tags:
+        - specialists
+      responses:
+        '200':
+          description: Список всех специалистов
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/User'
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  
+  schemas:
+    Token:
+      type: object
+      properties:
+        access_token:
+          type: string
+          description: JWT токен для аутентификации
+        token_type:
+          type: string
+          example: bearer
+      required:
+        - access_token
+        - token_type
+    
+    UserBase:
+      type: object
+      properties:
+        username:
+          type: string
+          description: Уникальный логин пользователя
+        full_name:
+          type: string
+          description: Полное имя пользователя
+        email:
+          type: string
+          format: email
+          description: Email пользователя
+        is_specialist:
+          type: boolean
+          default: false
+          description: Является ли пользователь специалистом
+      required:
+        - username
+        - full_name
+        - email
+    
+    UserCreate:
+      allOf:
+        - $ref: '#/components/schemas/UserBase'
+        - type: object
+          properties:
+            password:
+              type: string
+              format: password
+              description: Пароль пользователя
+          required:
+            - password
+    
+    User:
+      allOf:
+        - $ref: '#/components/schemas/UserBase'
+        - type: object
+          properties:
+            disabled:
+              type: boolean
+              default: false
+              description: Отключена ли учетная запись пользователя
