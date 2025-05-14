@@ -189,18 +189,24 @@ async def startup_db():
     finally:
         client.close()
 
-async def check_order_access(order, current_user, require_admin=False, require_client=False):
+async def check_order_access(order, current_user, require_admin=False, require_client=False, require_pending=False):
     """Проверка доступа к заказу"""
     is_admin = current_user["username"] == "admin"
     is_client = current_user["username"] == order["client_id"]
     is_specialist = any(item["specialist_id"] == current_user["username"] for item in order["items"])
+    is_pending = order["status"] == "pending"
     
     if require_admin and not is_admin:
         raise HTTPException(status_code=403, detail="Only admin can perform this action")
     
     if require_client and not (is_admin or is_client):
         raise HTTPException(status_code=403, detail="Only client or admin can perform this action")
-        
+    
+    if require_pending and not is_admin:
+        if not is_pending:
+            if is_client:
+                raise HTTPException(status_code=403, detail="You can delete orders only in 'pending' status")
+    
     if not (is_admin or is_client or is_specialist):
         raise HTTPException(status_code=403, detail="Not authorized to access this order")
     
@@ -400,17 +406,27 @@ async def delete_order(
     db = Depends(get_db),
     current_user = Depends(get_current_user)
 ):
-    """Удаление заказа (только для администраторов)"""
+    """Удаление заказа. 
+    Админ - удалляет любой заказ, клиент - свой в статусе pending
+    """
     try:
         existing_order = await db.orders.find_one({"order_id": order_id})
         if not existing_order:
             raise HTTPException(status_code=404, detail="Order not found")
-        
-        await check_order_access(existing_order, current_user, require_admin=True)
+
+        is_admin, is_client, _ = await check_order_access(
+            existing_order, 
+            current_user, 
+            require_client=True,
+            require_pending=True
+        )
         
         result = await db.orders.delete_one({"order_id": order_id})
         if result.deleted_count == 0:
+            logger.warning(f"Order {order_id} not found during deletion attempt")
             raise HTTPException(status_code=404, detail="Order not found")
+        logger.info(f"Order {order_id} deleted by {current_user['username']} (admin: {is_admin}, client: {is_client})")
+
     except HTTPException:
         raise
     except Exception as e:
