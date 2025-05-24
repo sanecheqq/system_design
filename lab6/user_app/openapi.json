@@ -1,0 +1,450 @@
+
+{
+    "openapi": "3.1.0",
+    "info": {
+      "title": "User API",
+      "description": "API для управления пользователями (заказчиками и специалистами)",
+      "version": "1.0.0"
+    },
+    "paths": {
+      "/token": {
+        "post": {
+          "summary": "Login For Access Token",
+          "operationId": "login_for_access_token_token_post",
+          "requestBody": {
+            "content": {
+              "application/x-www-form-urlencoded": {
+                "schema": {
+                  "$ref": "#/components/schemas/Body_login_for_access_token_token_post"
+                }
+              }
+            },
+            "required": true
+          },
+          "responses": {
+            "200": {
+              "description": "Successful Response",
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "$ref": "#/components/schemas/Token"
+                  }
+                }
+              }
+            },
+            "422": {
+              "description": "Validation Error",
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "$ref": "#/components/schemas/HTTPValidationError"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "/users/": {
+        "post": {
+          "summary": "Create User",
+          "description": "Создание нового пользователя",
+          "operationId": "create_user_users__post",
+          "requestBody": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserCreate"
+                }
+              }
+            },
+            "required": true
+          },
+          "responses": {
+            "201": {
+              "description": "Successful Response",
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "$ref": "#/components/schemas/User"
+                  }
+                }
+              }
+            },
+            "422": {
+              "description": "Validation Error",
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "$ref": "#/components/schemas/HTTPValidationError"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "/users/me": {
+        "get": {
+          "summary": "Read Users Me",
+          "description": "Получение информации о текущем пользователе",
+          "operationId": "read_users_me_users_me_get",
+          "responses": {
+            "200": {
+              "description": "Successful Response",
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "$ref": "#/components/schemas/User"
+                  }
+                }
+              }
+            }
+          },
+          "security": [
+            {
+              "OAuth2PasswordBearer": [
+                
+              ]
+            }
+          ]
+        }
+      },
+      "/users/{username}": {
+        "get": {
+          "summary": "Read User",
+          "description": "Получение информации о пользователе по логину",
+          "operationId": "read_user_users__username__get",
+          "parameters": [
+            {
+              "name": "username",
+              "in": "path",
+              "required": true,
+              "schema": {
+                "type": "string",
+                "title": "Username"
+              }
+            }
+          ],
+          "responses": {
+            "200": {
+              "description": "Successful Response",
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "$ref": "#/components/schemas/User"
+                  }
+                }
+              }
+            },
+            "422": {
+              "description": "Validation Error",
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "$ref": "#/components/schemas/HTTPValidationError"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "/users/search/": {
+        "get": {
+          "summary": "Search Users By Name",
+          "description": "Поиск пользователей по маске имени и фамилии",
+          "operationId": "search_users_by_name_users_search__get",
+          "parameters": [
+            {
+              "name": "name_mask",
+              "in": "query",
+              "required": true,
+              "schema": {
+                "type": "string",
+                "title": "Name Mask"
+              }
+            }
+          ],
+          "responses": {
+            "200": {
+              "description": "Successful Response",
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "type": "array",
+                    "items": {
+                      "$ref": "#/components/schemas/User"
+                    },
+                    "title": "Response Search Users By Name Endpoint Users Search  Get"
+                  }
+                }
+              }
+            },
+            "422": {
+              "description": "Validation Error",
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "$ref": "#/components/schemas/HTTPValidationError"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "/specialists/": {
+        "get": {
+          "summary": "Get All Specialists",
+          "description": "Получение списка всех специалистов",
+          "operationId": "get_all_specialists_specialists__get",
+          "responses": {
+            "200": {
+              "description": "Successful Response",
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "items": {
+                      "$ref": "#/components/schemas/User"
+                    },
+                    "type": "array",
+                    "title": "Response Get All Specialists Specialists  Get"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "components": {
+      "schemas": {
+        "Body_login_for_access_token_token_post": {
+          "properties": {
+            "grant_type": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "pattern": "^password$"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Grant Type"
+            },
+            "username": {
+              "type": "string",
+              "title": "Username"
+            },
+            "password": {
+              "type": "string",
+              "title": "Password"
+            },
+            "scope": {
+              "type": "string",
+              "title": "Scope",
+              "default": ""
+            },
+            "client_id": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Client Id"
+            },
+            "client_secret": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Client Secret"
+            }
+          },
+          "type": "object",
+          "required": [
+            "username",
+            "password"
+          ],
+          "title": "Body_login_for_access_token_token_post"
+        },
+        "HTTPValidationError": {
+          "properties": {
+            "detail": {
+              "items": {
+                "$ref": "#/components/schemas/ValidationError"
+              },
+              "type": "array",
+              "title": "Detail"
+            }
+          },
+          "type": "object",
+          "title": "HTTPValidationError"
+        },
+        "Token": {
+          "properties": {
+            "access_token": {
+              "type": "string",
+              "title": "Access Token"
+            },
+            "token_type": {
+              "type": "string",
+              "title": "Token Type"
+            }
+          },
+          "type": "object",
+          "required": [
+            "access_token",
+            "token_type"
+          ],
+          "title": "Token"
+        },
+        "User": {
+          "properties": {
+            "username": {
+              "type": "string",
+              "title": "Username"
+            },
+            "full_name": {
+              "type": "string",
+              "title": "Full Name"
+            },
+            "email": {
+              "type": "string",
+              "format": "email",
+              "title": "Email"
+            },
+            "is_specialist": {
+              "type": "boolean",
+              "title": "Is Specialist",
+              "default": false
+            },
+            "id": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Id"
+            },
+            "disabled": {
+              "type": "boolean",
+              "title": "Disabled",
+              "default": false
+            },
+            "created_at": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Created At"
+            }
+          },
+          "type": "object",
+          "required": [
+            "username",
+            "full_name",
+            "email"
+          ],
+          "title": "User"
+        },
+        "UserCreate": {
+          "properties": {
+            "username": {
+              "type": "string",
+              "title": "Username"
+            },
+            "full_name": {
+              "type": "string",
+              "title": "Full Name"
+            },
+            "email": {
+              "type": "string",
+              "format": "email",
+              "title": "Email"
+            },
+            "is_specialist": {
+              "type": "boolean",
+              "title": "Is Specialist",
+              "default": false
+            },
+            "password": {
+              "type": "string",
+              "title": "Password"
+            }
+          },
+          "type": "object",
+          "required": [
+            "username",
+            "full_name",
+            "email",
+            "password"
+          ],
+          "title": "UserCreate"
+        },
+        "ValidationError": {
+          "properties": {
+            "loc": {
+              "items": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "integer"
+                  }
+                ]
+              },
+              "type": "array",
+              "title": "Location"
+            },
+            "msg": {
+              "type": "string",
+              "title": "Message"
+            },
+            "type": {
+              "type": "string",
+              "title": "Error Type"
+            }
+          },
+          "type": "object",
+          "required": [
+            "loc",
+            "msg",
+            "type"
+          ],
+          "title": "ValidationError"
+        }
+      },
+      "securitySchemes": {
+        "OAuth2PasswordBearer": {
+          "type": "oauth2",
+          "flows": {
+            "password": {
+              "scopes": {
+                
+              },
+              "tokenUrl": "token"
+            }
+          }
+        }
+      }
+    }
+}
